@@ -1,1 +1,1 @@
-# ros_ee_trajectory_visualization
+# ee_trajectory_visualization
