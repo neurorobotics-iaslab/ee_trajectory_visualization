@@ -26,10 +26,11 @@ def compare_lens(event, base, to, translation_x, translation_y, translation_z):
 #   event_required: int of the event, 
 #   base_str: string of the base frame, 
 #   to_str: string of the to frame
-def getXYZ(event, base, to, translation_x, translation_y, trial_pointer = False, events_required=[781,33549],\
+def getXYZ(event, base, to, translation_x, translation_y, translation_z, trial_pointer = False, events_required=[781,33549],\
      base_str= "base", to_str="tool0_controller"):
     x = np.array([])
     y = np.array([])
+    z = np.array([])
     trial_pos = np.array([])
     first = True
     for i in range(len(to)):
@@ -44,6 +45,7 @@ def getXYZ(event, base, to, translation_x, translation_y, trial_pointer = False,
         if flag and base[i].replace(" ", "") == base_str.replace(" ", "") and to[i].replace(" ", "") == to_str.replace(" ", ""):
             x = np.append(x, translation_x[i])
             y = np.append(y, translation_y[i])
+            z = np.append(z, translation_z[i])
             if first:
                 first = False
                 trial_pos = np.append(trial_pos, len(x)-1)
@@ -53,21 +55,30 @@ def getXYZ(event, base, to, translation_x, translation_y, trial_pointer = False,
             first = True
 
     if trial_pointer:
-        return [x, y, trial_pos]
+        return [x, y, z, trial_pos]
     else:
-        return [x, y]
-        
-def getXYZ(event, base, to, translation_x, translation_y, translation_z, events_required=[781, 33549], base_str= "base", to_str="tool0_controller"):
-    x = np.array([])
-    y = np.array([])
-    z = np.array([])
-    for i in range(len(to)):
-        if event[i] == event_required and base[i].replace(" ", "") == base_str.replace(" ", "") and to[i].replace(" ", "") == to_str.replace(" ", ""):
-            x = np.append(x, translation_x[i])
-            y = np.append(y, translation_y[i])
-            z = np.append(z, translation_z[i])
+        return [x, y, z]
 
-    return [x, y, z]
+# print all the trials into one image
+def print_3d(x,y,z,pointer,ax):
+    pointer = np.append(pointer, len(x)-1) # we need also the final length of the pointer vector
+    colors = np.random.rand(len(pointer)-1, 3)
+    for i in range(len(pointer)-1):
+        x_c = x[int(pointer[i]):int(pointer[i+1]-1)]
+        y_c = y[int(pointer[i]):int(pointer[i+1]-1)]
+        z_c = z[int(pointer[i]):int(pointer[i+1]-1)]
+        label = "Trial " + str(i)
+        c_color = np.tile(np.array(colors[i]), len(x_c)).reshape(-1, len(colors[i]))
+
+        ax.scatter(x_c, y_c, z_c, c=c_color, marker='o', label=label, s=1)
+    
+    # Set labels and title
+    ax.set_xlabel('X-axis')
+    ax.set_ylabel('Y-axis')
+    ax.set_zlabel('Z-axis')
+    ax.set_title('3D Scatter Plot')
+
+    return ax
 
 # load the mat file
 filename = "/home/paolo/Scaricati/ur_data/ur_data20231221.120230.mat"
@@ -86,20 +97,13 @@ except NotEqualLenException as e:
     print("Caught NotEqualLenException: ", e)
 
 # get the x and y useful values in cm
-x, y, z = getXYZ(event, base, to, translation_x, translation_y, translation_z)
+x, y, z, pointer = getXYZ(event, base, to, translation_x, translation_y, translation_z, trial_pointer=True)
 
 # Create a 3D plot
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 
-# Plot the points
-ax.scatter(x, y, z, c='b', marker='o', label='Points')
-
-# Set labels and title
-ax.set_xlabel('X-axis')
-ax.set_ylabel('Y-axis')
-ax.set_zlabel('Z-axis')
-ax.set_title('3D Scatter Plot')
+print_3d(x,y,z,pointer,ax)
 
 # Show the plot
 plt.legend()
