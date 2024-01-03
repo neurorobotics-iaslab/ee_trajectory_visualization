@@ -1,6 +1,7 @@
 from scipy.io import loadmat
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 
 # initial exception class
 class NotEqualLenException(Exception):
@@ -66,42 +67,74 @@ def print_2d(x,y,pointer,ax):
         c_color = np.tile(np.array(colors[i]), len(x_c)).reshape(-1, len(colors[i]))
 
         ax.scatter(x_c, y_c, c=c_color, marker='o', label=label, s=1)
-    
-    # Set labels and title
-    ax.set_xlabel('X-axis')
-    ax.set_ylabel('Y-axis')
-    ax.set_title('2D Scatter Plot')
 
     return ax
 
+# given the directory of all .mat files, return the path of all the files
+def getFiles(directory):
+    filenames = []
+    for filename in os.listdir(directory):
+        filepath = os.path.join(directory, filename)
+        filenames.append(filepath)
+    
+    return filenames
+
+# extract useful informations from mat
+def extractInfoo(mat_file):
+    # take useful informations and check them
+    event = mat_file['event'][0]
+    base = mat_file['from'] # it contains: "base", "\kinect2_rgb_optical_frame"
+    to = mat_file['to']     # it contains: "tool0_controller", "tag_0", "tag_1", "tag_2", "tag_3", "tag_4"
+    translation_x = mat_file['translation_x'][0]
+    translation_y = mat_file['translation_y'][0]
+    try:
+        compare_lens(event, base, to, translation_x, translation_y)
+        return [event, base, to, translation_x, translation_y]
+    except NotEqualLenException as e:
+        print("Caught NotEqualLenException: ", e)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # load the mat file
-filename = "/home/paolo/Scaricati/ur_data/ur_data20231221.120230.mat"
-mat_file = loadmat(filename)
+directory = "/home/paolo/Scaricati/ur_data"
+files = getFiles(directory)
 
-# take useful informations and check them
-event = mat_file['event'][0]
-base = mat_file['from'] # it contains: "base", "\kinect2_rgb_optical_frame"
-to = mat_file['to']     # it contains: "tool0_controller", "tag_0", "tag_1", "tag_2", "tag_3", "tag_4"
-translation_x = mat_file['translation_x'][0]
-translation_y = mat_file['translation_y'][0]
-try:
-    compare_lens(event, base, to, translation_x, translation_y)
-except NotEqualLenException as e:
-    print("Caught NotEqualLenException: ", e)
+for file in files:
+    print(f"Processing file: {file}")
+    # load file
+    mat_file = loadmat(file)
 
-# get the x and y of the continuous feedback and for a pick
-events_required = [781, 33549, 1000, 1001, 1002, 1003, 1004] # cf, end of cf, pick for all target
-x, y, pointer = getXY(event, base, to, translation_x, translation_y, trial_pointer=True, events_required=events_required)
+    # extract informations
+    event, base, to, translation_x, translation_y = extractInfoo(mat_file)
 
-print(f"trials: {len(pointer)}")
+    # get the x and y of the continuous feedback and for a pick
+    events_required = [781, 33549, 1000, 1001, 1002, 1003, 1004] # cf, end of cf, pick for all target
+    x, y, pointer = getXY(event, base, to, translation_x, translation_y, trial_pointer=True, events_required=events_required)
 
-# Create a 3D plot
-fig = plt.figure()
-ax = fig.add_subplot(111)
+    # Create a 3D plot
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
 
-# print the points
-ax = print_2d(x, y, pointer, ax)
+    # print the points
+    ax = print_2d(x, y, pointer, ax)
+    # Set labels and title
+    ax.set_xlabel('X-axis')
+    ax.set_ylabel('Y-axis')
+    ax.set_title(f"file: {file}")
 
-# Show the plot
-plt.legend()
-plt.show()
+    # Show the plot
+    plt.legend()
+    plt.show()
