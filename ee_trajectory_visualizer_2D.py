@@ -14,62 +14,6 @@ def compare_lens(event, base, to, translation_x, translation_y):
         \n  translation_x size: {len(translation_x)}, \n  translation_y size: {len(translation_y)}."
         raise NotEqualLenException(err_string)
 
-# return x and y of the required from-to frame transformation on a specific event. Additionally it can return also a vector with the position of the first
-#    element of a new trial
-# Parameters: 
-#   event: vector with all the events, 
-#   base: vector with all base vector
-#   to: vector with all to frame
-#   translation_x: vector with all translation of x of the end effector
-#   translation_y: vector with all translation of y of the end effector
-#   events_required: vector of all events required
-#   base_str: string of the base frame, 
-#   to_str: string of the to frame
-def getXY(event, base, to, translation_x, translation_y, trial_pointer = False, events_required=[781,33549],\
-     base_str= "base", to_str="tool0_controller"):
-    x = np.array([])
-    y = np.array([])
-    trial_pos = np.array([])
-    first = True
-    for i in range(len(to)):
-
-        # check if correct event according to the one searched
-        flag = False
-        for c_event in events_required:
-            if event[i] == c_event:
-                flag = True
-
-        # check for frames
-        if flag and base[i].replace(" ", "") == base_str.replace(" ", "") and to[i].replace(" ", "") == to_str.replace(" ", ""):
-            x = np.append(x, translation_x[i])
-            y = np.append(y, translation_y[i])
-            if first:
-                first = False
-                trial_pos = np.append(trial_pos, len(x)-1)
-        
-        # update the flag used to save first element of the trial
-        if not flag: 
-            first = True
-
-    if trial_pointer:
-        return [x, y, trial_pos]
-    else:
-        return [x, y]
-
-# print all the trials into one image
-def print_2d(x,y,pointer,ax):
-    pointer = np.append(pointer, len(x)-1) # we need also the final length of the pointer vector
-    colors = np.random.rand(len(pointer)-1, 3)
-    for i in range(len(pointer)-1):
-        x_c = x[int(pointer[i]):int(pointer[i+1]-1)]
-        y_c = y[int(pointer[i]):int(pointer[i+1]-1)]
-        label = "Trial " + str(i)
-        c_color = np.tile(np.array(colors[i]), len(x_c)).reshape(-1, len(colors[i]))
-
-        ax.scatter(x_c, y_c, c=c_color, marker='o', label=label, s=1)
-
-    return ax
-
 # given the directory of all .mat files, return the path of all the files
 def getFiles(directory):
     filenames = []
@@ -85,24 +29,95 @@ def extractInfoo(mat_file):
     event = mat_file['event'][0]
     base = mat_file['from'] # it contains: "base", "\kinect2_rgb_optical_frame"
     to = mat_file['to']     # it contains: "tool0_controller", "tag_0", "tag_1", "tag_2", "tag_3", "tag_4"
+
+    # take translation
     translation_x = mat_file['translation_x'][0]
     translation_y = mat_file['translation_y'][0]
+    translation_z = mat_file['translation_z'][0]
+    translation = np.array([translation_x[0], translation_y[0], translation_z[0]])
+    for i in range(1, len(translation_x)):
+        translation = np.vstack((translation, np.array([translation_x[i], translation_y[i], translation_z[i]])))
+
+    # take rotation
+    rotation_x = mat_file['rotation_x'][0]
+    rotation_y = mat_file['rotation_y'][0]
+    rotation_z = mat_file['rotation_z'][0]
+    rotation_w = mat_file['rotation_w'][0]
+    rotation = np.array([rotation_x[0], rotation_y[0], rotation_z[0], rotation_w[0]])
+    for i in range(1, len(rotation_x)):
+        rotation = np.vstack((rotation, np.array([rotation_x[i], rotation_y[i], rotation_z[i], rotation_w[i]])))
+    
+    # check the length
     try:
-        compare_lens(event, base, to, translation_x, translation_y)
-        return [event, base, to, translation_x, translation_y]
+        compare_lens(event, base, to, translation, rotation)
+        return [event, base, to, translation, rotation]
     except NotEqualLenException as e:
         print("Caught NotEqualLenException: ", e)
 
+def getTranslationRotations_ee(event, base, to, translations, rotations, trial_pointer = False, events_required=[781,33549],\
+     base_str= "base", to_str="tool0_controller"):
+    trials_translations = np.empty((0, 3))
+    trials_rotations = np.empty((0,4))
+    trial_pos = np.array([])
+    first = True
+    for i in range(len(to)):
 
+        # check if correct event according to the one searched
+        flag = False
+        if event[i] in events_required:
+            flag = True
 
+        # check for frames
+        if flag and base[i].replace(" ", "") == base_str.replace(" ", "") and to[i].replace(" ", "") == to_str.replace(" ", ""):
+            if first:
+                first = False
+                if len(trial_pos) == 0:
+                    trial_pos = np.append(trial_pos, 0)
+                else:
+                    trial_pos = np.append(trial_pos, trials_translations.shape[0]-1)
+            trials_rotations = np.vstack((trials_rotations, rotations[i,:]))
+            trials_translations = np.vstack((trials_translations, translations[i,:]))
+        
+        # update the flag used to save first element of the trial
+        if not flag: 
+            first = True
 
+    if trial_pointer:
+        return [trials_translations, trials_rotations, trial_pos]
+    else:
+        return [trials_translations, trials_rotations]
 
+# print all the trials into one image
+def print_2d(translations,pointer,ax):
+    pointer = np.append(pointer, len(translations)-1) # we need also the final length of the pointer vector
+    colors = np.random.rand(len(pointer)-1, 3)
+    for i in range(len(pointer)-1):
+        x_c = translations[int(pointer[i]):int(pointer[i+1]-1), 0]
+        y_c = translations[int(pointer[i]):int(pointer[i+1]-1), 1]
+        label = "Trial " + str(i)
+        c_color = np.tile(np.array(colors[i]), len(x_c)).reshape(-1, len(colors[i]))
 
+        ax.scatter(x_c, y_c, c=c_color, marker='o', label=label, s=1)
 
+    return ax
 
+def draw_base(ax):
+    ax.scatter(0,0,c='black', marker='D', label="base", s=1)
+    return ax
 
+def getTranslationRotations_target(base, to, targets, translations, rotations, base_str="/kinect2_rgb_optical_frame"):
+    translations_targets = np.empty((0,3))
+    rotations_targets = np.empty((0,4))
 
+    find_targets = [False, False, False, False, False]
 
+    for i in range(len(base)):
+        for j in range(len(find_targets)):
+            if to[i].replace(" ", "") == targets[j] and (not find_targets[j]):
+                translations_targets = np.vstack((translations_targets, translations[i]))
+                rotations_targets = np.vstack((rotations_targets, rotations[i]))
+
+    return [translations_targets, rotations_targets]
 
 
 
@@ -114,22 +129,30 @@ files = getFiles(directory)
 
 for file in files:
     print(f"Processing file: {file}")
-    # load file
+    # load file and extract informations
     mat_file = loadmat(file)
+    events, base, to, translations, rotations = extractInfoo(mat_file)     
 
-    # extract informations
-    event, base, to, translation_x, translation_y = extractInfoo(mat_file)
-
-    # get the x and y of the continuous feedback and for a pick
+    # get the translation and the rotation of ee during cf and pick
     events_required = [781, 33549, 1000, 1001, 1002, 1003, 1004] # cf, end of cf, pick for all target
-    x, y, pointer = getXY(event, base, to, translation_x, translation_y, trial_pointer=True, events_required=events_required)
+    req_translations, req_rotations, pointer = getTranslationRotations_ee(events, base, to, translations, rotations, trial_pointer=True, events_required=events_required) 
 
+    # get positions of targets
+    targets = ["tag_0", "tag_1", "tag_2", "tag_3", "tag_4"]
+    translations_kect_targets, rotations_kinect_targets = getTranslationRotations_target(base, to, targets, translations, rotations) # now we have kinect -> target
+    translation_base_kinect = np.array([0.064, 0.759, 2.021])
+    rotation_base_kinect = np.array([0.016, 0.977, -0.203, -0.058])
+
+ 
     # Create a 3D plot
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
     # print the points
-    ax = print_2d(x, y, pointer, ax)
+    ax = draw_base(ax)
+    #ax = draw_cubes(ax, translations, rotations)
+    ax = print_2d(req_translations, pointer, ax)
+
     # Set labels and title
     ax.set_xlabel('X-axis')
     ax.set_ylabel('Y-axis')
