@@ -54,7 +54,7 @@ def extractInfoo(mat_file):
     except NotEqualLenException as e:
         print("Caught NotEqualLenException: ", e)
 
-def getTranslationRotations_ee(event, base, to, translations, rotations, trial_pointer = False, events_required=[781,33549],\
+def getTranslationRotations_ee(events, base, to, translations, rotations, trial_pointer = False, events_required=[781,33549], \
      base_str= "base", to_str="tool0_controller"):
     trials_translations = np.empty((0, 3))
     trials_rotations = np.empty((0,4))
@@ -63,29 +63,38 @@ def getTranslationRotations_ee(event, base, to, translations, rotations, trial_p
     for i in range(len(to)):
 
         # check if correct event according to the one searched
-        flag = False
-        if event[i] in events_required:
-            flag = True
+        if events[i] in events_required: 
+            # check for frames
+            if base[i].replace(" ", "") == base_str.replace(" ", "") and to[i].replace(" ", "") == to_str.replace(" ", ""):
+                if first:
+                    first = False
+                    if len(trial_pos) == 0:
+                        trial_pos = np.append(trial_pos, 0)
+                    else:
+                        trial_pos = np.append(trial_pos, trials_translations.shape[0]-1)
+                trials_rotations = np.vstack((trials_rotations, rotations[i,:]))
+                trials_translations = np.vstack((trials_translations, translations[i,:]))
 
-        # check for frames
-        if flag and base[i].replace(" ", "") == base_str.replace(" ", "") and to[i].replace(" ", "") == to_str.replace(" ", ""):
-            if first:
-                first = False
-                if len(trial_pos) == 0:
-                    trial_pos = np.append(trial_pos, 0)
-                else:
-                    trial_pos = np.append(trial_pos, trials_translations.shape[0]-1)
-            trials_rotations = np.vstack((trials_rotations, rotations[i,:]))
-            trials_translations = np.vstack((trials_translations, translations[i,:]))
-        
         # update the flag used to save first element of the trial
-        if not flag: 
+        else: 
             first = True
 
     if trial_pointer:
         return [trials_translations, trials_rotations, trial_pos]
     else:
         return [trials_translations, trials_rotations]
+
+def get_cue(events, events_cue=[5000,5001,5002,5003,5004]):
+    find_cue = True
+    cues = np.array([])
+    for event in events:
+        if event in events_cue and find_cue:
+            find_cue = False
+            cues = np.append(cues, event)
+        elif not (event in events_cue):
+            find_cue = True
+    
+    return cues
 
 # print all the trials into one image
 def print_2d(translations,pointer,ax):
@@ -122,7 +131,6 @@ def getTranslationRotations_target(base, to, targets, translations, rotations, b
 
 
 
-
 # load the mat file
 directory = "/home/paolo/Scaricati/ur_data"
 files = getFiles(directory)
@@ -136,6 +144,9 @@ for file in files:
     # get the translation and the rotation of ee during cf and pick
     events_required = [781, 33549, 1000, 1001, 1002, 1003, 1004] # cf, end of cf, pick for all target
     req_translations, req_rotations, pointer = getTranslationRotations_ee(events, base, to, translations, rotations, trial_pointer=True, events_required=events_required) 
+
+    cues = get_cue(events)
+    print(cues)
 
     # get positions of targets
     targets = ["tag_0", "tag_1", "tag_2", "tag_3", "tag_4"]
