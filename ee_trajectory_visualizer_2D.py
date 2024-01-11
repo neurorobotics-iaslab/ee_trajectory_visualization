@@ -1,7 +1,18 @@
 from scipy.io import loadmat
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import numpy as np
 import os
+
+COLORS = np.array([
+    [255/255,   0,   0], # red
+    [255/255, 165/255,   0], # orange
+    [  0, 128/255,   0], # green
+    [  0,   0, 255/255], # blue
+    [128/255,   0, 128/255] # purple
+    ])
+
+TARGETS_ORDER = np.array([0,3,4,1,2])
 
 # initial exception class
 class NotEqualLenException(Exception):
@@ -15,7 +26,7 @@ def compare_lens(event, base, to, translation_x, translation_y):
         raise NotEqualLenException(err_string)
 
 # given the directory of all .mat files, return the path of all the files
-def getFiles(directory):
+def get_files(directory):
     filenames = []
     for filename in os.listdir(directory):
         filepath = os.path.join(directory, filename)
@@ -24,7 +35,7 @@ def getFiles(directory):
     return filenames
 
 # extract useful informations from mat
-def extractInfoo(mat_file):
+def extract_infoo(mat_file):
     # take useful informations and check them
     event = mat_file['event'][0]
     base = mat_file['from'] # it contains: "base", "\kinect2_rgb_optical_frame"
@@ -54,7 +65,7 @@ def extractInfoo(mat_file):
     except NotEqualLenException as e:
         print("Caught NotEqualLenException: ", e)
 
-def getTranslationRotations_ee(events, base, to, translations, rotations, trial_pointer = False, events_required=[781,33549], \
+def get_translation_rotations_ee(events, base, to, translations, rotations, trial_pointer = False, events_required=[781,33549], \
      base_str= "base", to_str="tool0_controller"):
     trials_translations = np.empty((0, 3))
     trials_rotations = np.empty((0,4))
@@ -97,72 +108,44 @@ def get_cue(events, events_cue=[5000,5001,5002,5003,5004]):
     return cues
 
 # print all the trials into one image
-def print_2d(translations,pointer,ax):
+def draw_trajectory(translations, pointer, colors, ax):   
     pointer = np.append(pointer, len(translations)-1) # we need also the final length of the pointer vector
-    colors = np.random.rand(len(pointer)-1, 3)
     for i in range(len(pointer)-1):
         x_c = translations[int(pointer[i]):int(pointer[i+1]-1), 0]
         y_c = translations[int(pointer[i]):int(pointer[i+1]-1), 1]
-        label = "Trial " + str(i)
         c_color = np.tile(np.array(colors[i]), len(x_c)).reshape(-1, len(colors[i]))
-
-        ax.scatter(x_c, y_c, c=c_color, marker='o', label=label, s=1)
+        ax.scatter(x_c, y_c, c=c_color, marker='o', s=1)
 
     return ax
 
 def draw_base(ax):
-    ax.scatter(0,0,c='black', marker='D', label="base", s=1)
+    ax.scatter(0,0,c='black', marker='D', label="base", s=15)
     return ax
 
-def getTranslationRotations_target(base, to, targets, translations, rotations, base_str="/kinect2_rgb_optical_frame"):
-    translations_targets = np.empty((0,3))
-    rotations_targets = np.empty((0,4))
+def draw_target(ax, points, targets_order, colors_targets, width, height):
+    # sort the target points according to x coords
+    indices = np.argsort(points[:, 0])
+    points = points[indices]
 
-    find_targets = [False, False, False, False, False]
+    # draw rect for each tags
+    i = 0
+    for point in points:
+        #rect = patches.Rectangle((point[0]-width/2.0, point[1]-height/2), width, height, edgecolor='r', facecolor='none')
+        rect = patches.Rectangle((point[0]-width/2.0, point[1]-height/2), width, height, edgecolor=colors_targets[i,:], facecolor='none')
+        ax.text(point[0], point[1] + height, f"tag_{targets_order[i]}", ha='center', va='center')
+        ax.add_patch(rect)
+        i = i + 1
+    return ax
 
-    for i in range(len(base)):
-        for j in range(len(find_targets)):
-            if to[i].replace(" ", "") == targets[j] and (not find_targets[j]):
-                translations_targets = np.vstack((translations_targets, translations[i]))
-                rotations_targets = np.vstack((rotations_targets, rotations[i]))
-
-    return [translations_targets, rotations_targets]
-
-
-
-
-# load the mat file
-directory = "/home/paolo/Scaricati/ur_data"
-files = getFiles(directory)
-
-for file in files:
-    print(f"Processing file: {file}")
-    # load file and extract informations
-    mat_file = loadmat(file)
-    events, base, to, translations, rotations = extractInfoo(mat_file)     
-
-    # get the translation and the rotation of ee during cf and pick
-    events_required = [781, 33549, 1000, 1001, 1002, 1003, 1004] # cf, end of cf, pick for all target
-    req_translations, req_rotations, pointer = getTranslationRotations_ee(events, base, to, translations, rotations, trial_pointer=True, events_required=events_required) 
-
-    cues = get_cue(events)
-    print(cues)
-
-    # get positions of targets
-    targets = ["tag_0", "tag_1", "tag_2", "tag_3", "tag_4"]
-    translations_kect_targets, rotations_kinect_targets = getTranslationRotations_target(base, to, targets, translations, rotations) # now we have kinect -> target
-    translation_base_kinect = np.array([0.064, 0.759, 2.021])
-    rotation_base_kinect = np.array([0.016, 0.977, -0.203, -0.058])
-
- 
-    # Create a 3D plot
+def plot_everything(points_trajectories, points_targets, tragets_order, colors_trials, colors_targets, pointer):
+    # Create a 2D plot
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
     # print the points
     ax = draw_base(ax)
-    #ax = draw_cubes(ax, translations, rotations)
-    ax = print_2d(req_translations, pointer, ax)
+    ax = draw_trajectory(points_trajectories, pointer, colors_trials, ax)
+    ax = draw_target(ax, points_targets, tragets_order, colors_targets, 0.02, 0.02)
 
     # Set labels and title
     ax.set_xlabel('X-axis')
@@ -171,4 +154,185 @@ for file in files:
 
     # Show the plot
     plt.legend()
+    plt.axis([-0.5, 0.5, -0.05, 0.95])
+
+    #plt.savefig(f"plot_{file}.png")
     plt.show()
+
+def get_target_position(base, to, tragets_order, translations, rotations,  translation_base_kinect, rotation_base_kinect, base_str="/kinect2_rgb_optical_frame"):
+    translations_targets = np.empty((0,3))
+    rotations_targets = np.empty((0,4))
+
+    find_targets = [False] * len(tragets_order)
+
+    # take the translation and rotation of each target with respect to base_str frame
+    for i in range(len(base)):
+        for j in tragets_order:
+            if (to[i].replace(" ", "") == f"tag_{j}" and base[i].replace(" ", "") == base_str) and (not find_targets[j]):
+                translations_targets = np.vstack((translations_targets, translations[i]))
+                rotations_targets = np.vstack((rotations_targets, rotations[i]))
+                find_targets[j] = True
+
+    # compute the transfromation matrix starting from rotation and translation matrix
+    tf_base_kinect = quaternionTranslation_to_transformationMatrix(rotation_base_kinect, translation_base_kinect)
+    points = np.empty((0,3))
+
+    for i in range(len(translations_targets)):
+        tmp_target = np.ones(4)
+        tmp_target[0:3] = translations_targets[i,:]
+        
+        point = np.dot(tf_base_kinect, tmp_target)
+
+        points = np.vstack((points, point[0:3]))
+    
+    return points
+
+def getColors(cues, targes_order):
+    # compute a dict with cue : color
+    cue_color_dict = {}
+    for i in range(len(targes_order)):
+        cue_color_dict[targes_order[i]] = COLORS[i]
+
+    # compute the vector with th ecolor for all trial
+    colors_trials = np.empty((0,3))
+    for cue in cues:
+        colors_trials = np.vstack((colors_trials, cue_color_dict[cue]))
+
+    return [colors_trials, COLORS]
+
+
+def quaternionTranslation_to_transformationMatrix(q, translation):
+    x, y, z, w = q
+    tx, ty, tz = translation
+    
+    rotation_matrix = np.array([
+        [1 - 2*y*y - 2*z*z, 2*x*y - 2*w*z, 2*x*z + 2*w*y],
+        [2*x*y + 2*w*z, 1 - 2*x*x - 2*z*z, 2*y*z - 2*w*x],
+        [2*x*z - 2*w*y, 2*y*z + 2*w*x, 1 - 2*x*x - 2*y*y]
+    ])
+
+    transformation_matrix = np.eye(4)
+    transformation_matrix[0:3, 0:3] = rotation_matrix
+    transformation_matrix[0:3, 3] = [tx, ty, tz]
+    
+    return transformation_matrix
+
+
+
+def vel_acc_jerk_4_trial(x, y, pointer):
+    pointer = np.append(pointer, len(x))
+    print(pointer)
+    for i in range(0, len(pointer)-1):
+        positions_x = x[int(pointer[i]):int(pointer[i+1]-1)]
+        velocity_x = np.gradient(positions_x, 1)
+        acceleration_x = np.gradient(velocity_x, 1)
+        jerk_x = np.gradient(acceleration_x, 1)
+
+        positions_y = y[int(pointer[i]):int(pointer[i+1]-1)]
+        velocity_y = np.gradient(positions_y, 1)
+        acceleration_y = np.gradient(velocity_y, 1)
+        jerk_y = np.gradient(acceleration_y, 1)
+
+        fig = plt.figure(f"analisis trial {i}")
+        plt.subplot(2,3,1)
+        plt.plot(range(len(velocity_x)), velocity_x, label='velocity_x')
+        plt.legend()
+
+        plt.subplot(2,3,2)
+        plt.plot(range(len(acceleration_x)), acceleration_x, label='acceleration_x')
+        plt.legend()
+
+        plt.subplot(2,3,3)
+        plt.plot(range(len(jerk_x)), jerk_x, label='jerk_x')
+        plt.legend()
+
+        plt.subplot(2,3,4)
+        plt.plot(range(len(velocity_y)), velocity_y, label='velocity_y')
+        plt.legend()
+
+        plt.subplot(2,3,5)
+        plt.plot(range(len(acceleration_y)), acceleration_y, label='acceleration_y')
+        plt.legend()
+
+        plt.subplot(2,3,6)
+        plt.plot(range(len(jerk_y)), jerk_y, label='jerk_y')
+        plt.legend()
+    
+def calculate_angle(x1,y1,x2,y2):
+    delta_x = x2-x1
+    delta_y = y2-y1
+
+    angle_rad = np.arctan2(delta_y, delta_x)
+
+    return angle_rad
+
+def metric(ee_positions, pointer, targets_positions, targets_order, cues, step=5):
+    # sort the position of targets in order to have correct labeling using targets_order
+    indices = np.argsort(targets_positions[:,0])
+    target_positions_sorted = targets_positions[indices]
+    
+    # add the final pointer
+    pointer = np.append(pointer, len(ee_positions))
+
+    # iterate over trials
+    for i in range(len(pointer)-1):
+        # save initial position ee
+        ee_start_position = ee_positions[int(pointer[i]),:]
+
+        # take only few points of the trajectory
+        num = int((pointer[i+1] - pointer[i])/step)
+        pointer_points_used = np.linspace(pointer[i]+1, pointer[i+1]-1, num) # +1 since first position is used as initial pos for ee
+        
+        # take the correct target position
+        for t in range(len(targets_order)):
+            if targets_order[t] == cues[i]:
+                i_target = t
+        correct_target_position = target_positions_sorted[i_target,:]
+        # print(f"current target pos: {correct_target_position}, cue: {cues[i]}")
+
+        # compute the correct angle which connect first position of ee and target
+        correct_m = calculate_angle(ee_start_position[0], ee_start_position[1], correct_target_position[0], correct_target_position[1])
+        
+        # TODO: compute the angle using the following value according to the one selected -1. In addition you need to remove the ones obtained for the pick
+        for j in pointer_points_used:
+            c_ee_x = ee_positions[int(j), 0]
+            c_ee_y = ee_positions[int(j), 1]
+
+
+
+
+
+
+
+# load the mat file
+directory = "/home/paolo/Scaricati/ur_data_correct"
+files = get_files(directory)
+print(f"files to process: {len(files)}")
+for file in files:
+    #file = directory + "/ur_data20231215.173304_new.mat"
+    print(f"Processing file: {file}")
+    # load file and extract informations
+    mat_file = loadmat(file)
+    events, base, to, translations, rotations = extract_infoo(mat_file)     
+
+    # get the translation and the rotation of ee during cf and pick. All is with respect to base frame
+    events_required = [781, 33549, 1000, 1001, 1002, 1003, 1004] # cf, end of cf, pick for all target
+    ee_positions, ee_rotations, pointer = get_translation_rotations_ee(events, base, to, translations, rotations, trial_pointer=True, events_required=events_required) 
+
+    # get the cues and set the colors according them
+    cues = get_cue(events)
+    colors_trials, colors_targets = getColors(cues, TARGETS_ORDER + 5000)
+
+
+    # get positions of targets with respect to base frame
+    translation_base_kinect = np.array([0.064, 0.759, 2.021])
+    rotation_base_kinect = np.array([0.016, 0.977, -0.203, -0.058])
+    targets_positions = get_target_position(base, to, TARGETS_ORDER, translations, rotations, translation_base_kinect, rotation_base_kinect) # now we have kinect -> target
+
+    # shows velocity, acceleration and jerk starting from position (x,y) of the end-effector
+    # vel_acc_jerk_4_trial(ee_positions[1:,0], ee_positions[1:,1], pointer) # --> close to zero
+    
+    metric(ee_positions, pointer, targets_positions, TARGETS_ORDER + 5000, cues, 5)
+
+    # plot all
+    plot_everything(ee_positions, targets_positions, TARGETS_ORDER, colors_trials, colors_targets, pointer)
