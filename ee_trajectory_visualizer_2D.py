@@ -69,7 +69,7 @@ def get_translation_rotations_ee(events, base, to, translations, rotations, tria
      base_str= "base", to_str="tool0_controller"):
     trials_translations = np.empty((0, 3))
     trials_rotations = np.empty((0,4))
-    trial_pos = np.array([])
+    trial_pos = np.array([], dtype=int)
     first = True
     for i in range(len(to)):
 
@@ -111,10 +111,10 @@ def get_cue(events, events_cue=[5000,5001,5002,5003,5004]):
 def draw_trajectory(translations, pointer, colors, ax):   
     pointer = np.append(pointer, len(translations)-1) # we need also the final length of the pointer vector
     for i in range(len(pointer)-1):
-        x_c = translations[int(pointer[i]):int(pointer[i+1]-1), 0]
-        y_c = translations[int(pointer[i]):int(pointer[i+1]-1), 1]
+        x_c = translations[pointer[i]:pointer[i+1]-1, 0]
+        y_c = translations[pointer[i]:pointer[i+1]-1, 1]
         c_color = np.tile(np.array(colors[i]), len(x_c)).reshape(-1, len(colors[i]))
-        ax.scatter(x_c, y_c, c=c_color, marker='o', s=1)
+        ax.scatter(x_c, y_c, c=c_color, marker='o', s=1, label=f"trial {i}")
 
     return ax
 
@@ -137,9 +137,9 @@ def draw_target(ax, points, targets_order, colors_targets, width, height):
         i = i + 1
     return ax
 
-def plot_everything(points_trajectories, points_targets, tragets_order, colors_trials, colors_targets, pointer):
+def plot_everything(points_trajectories, points_targets, tragets_order, colors_trials, colors_targets, pointer, name_file):
     # Create a 2D plot
-    fig = plt.figure()
+    fig = plt.figure(f"trajectories file: {name_file}")
     ax = fig.add_subplot(111)
 
     # print the points
@@ -150,14 +150,14 @@ def plot_everything(points_trajectories, points_targets, tragets_order, colors_t
     # Set labels and title
     ax.set_xlabel('X-axis')
     ax.set_ylabel('Y-axis')
-    ax.set_title(f"file: {file}")
+    ax.set_title(f"file: {name_file}")
 
     # Show the plot
     plt.legend()
     plt.axis([-0.5, 0.5, -0.05, 0.95])
 
-    #plt.savefig(f"plot_{file}.png")
-    plt.show()
+    plt.savefig(f"plot_{name_file}.png")
+    #plt.show()
 
 def get_target_position(base, to, tragets_order, translations, rotations,  translation_base_kinect, rotation_base_kinect, base_str="/kinect2_rgb_optical_frame"):
     translations_targets = np.empty((0,3))
@@ -223,12 +223,12 @@ def vel_acc_jerk_4_trial(x, y, pointer):
     pointer = np.append(pointer, len(x))
     print(pointer)
     for i in range(0, len(pointer)-1):
-        positions_x = x[int(pointer[i]):int(pointer[i+1]-1)]
+        positions_x = x[pointer[i]:pointer[i+1]-1]
         velocity_x = np.gradient(positions_x, 1)
         acceleration_x = np.gradient(velocity_x, 1)
         jerk_x = np.gradient(acceleration_x, 1)
 
-        positions_y = y[int(pointer[i]):int(pointer[i+1]-1)]
+        positions_y = y[pointer[i]:pointer[i+1]-1]
         velocity_y = np.gradient(positions_y, 1)
         acceleration_y = np.gradient(velocity_y, 1)
         jerk_y = np.gradient(acceleration_y, 1)
@@ -258,6 +258,8 @@ def vel_acc_jerk_4_trial(x, y, pointer):
         plt.plot(range(len(jerk_y)), jerk_y, label='jerk_y')
         plt.legend()
     
+    plt.show()
+    
 def calculate_angle(x1,y1,x2,y2):
     delta_x = x2-x1
     delta_y = y2-y1
@@ -277,11 +279,10 @@ def metric(ee_positions, pointer, targets_positions, targets_order, cues, step=5
     # iterate over trials
     for i in range(len(pointer)-1):
         # save initial position ee
-        ee_start_position = ee_positions[int(pointer[i]),:]
+        ee_start_position = ee_positions[pointer[i],:]
 
         # take only few points of the trajectory
-        num = int((pointer[i+1] - pointer[i])/step)
-        pointer_points_used = np.linspace(pointer[i]+1, pointer[i+1]-1, num) # +1 since first position is used as initial pos for ee
+        pointer_points_used = np.arange(pointer[i]+1, pointer[i+1]-1, step) # +1 since first position is used as initial pos for ee
         
         # take the correct target position
         for t in range(len(targets_order)):
@@ -291,12 +292,25 @@ def metric(ee_positions, pointer, targets_positions, targets_order, cues, step=5
         # print(f"current target pos: {correct_target_position}, cue: {cues[i]}")
 
         # compute the correct angle which connect first position of ee and target
-        correct_m = calculate_angle(ee_start_position[0], ee_start_position[1], correct_target_position[0], correct_target_position[1])
+        correct_angle = calculate_angle(ee_start_position[0], ee_start_position[1], correct_target_position[0], correct_target_position[1])
         
-        # TODO: compute the angle using the following value according to the one selected -1. In addition you need to remove the ones obtained for the pick
-        for j in pointer_points_used:
-            c_ee_x = ee_positions[int(j), 0]
-            c_ee_y = ee_positions[int(j), 1]
+        # variable initialization
+        err = np.array([])
+        # iterate over points to use except the last point which is the target one
+        for j in range(len(pointer_points_used)-1):
+            c_ee_x = ee_positions[pointer_points_used[j], 0]
+            c_ee_y = ee_positions[pointer_points_used[j], 1]
+
+            n_ee_x = ee_positions[pointer_points_used[j+1], 0]
+            n_ee_y = ee_positions[pointer_points_used[j+1], 1]
+
+            c_angle = calculate_angle(c_ee_x, c_ee_y, n_ee_x, n_ee_y)
+
+            err = np.append(err, abs(c_angle - correct_angle))
+        
+        
+        print(f"Trial: {i}, error computed for: {len(err)} segments, error mean: {np.mean(err)} rad")
+            
 
 
 
@@ -309,12 +323,15 @@ directory = "/home/paolo/Scaricati/ur_data_correct"
 files = get_files(directory)
 print(f"files to process: {len(files)}")
 for file in files:
+    ############################## LOAD FILE AND EXTRACT ALL INFORMATIONS
     #file = directory + "/ur_data20231215.173304_new.mat"
     print(f"Processing file: {file}")
-    # load file and extract informations
     mat_file = loadmat(file)
+    name_file = file.split('/')[len(file.split('/'))-1]
+    name_file = name_file[0:len(name_file)-4]
     events, base, to, translations, rotations = extract_infoo(mat_file)     
 
+    ############################## REASONING FOR PLOTTING
     # get the translation and the rotation of ee during cf and pick. All is with respect to base frame
     events_required = [781, 33549, 1000, 1001, 1002, 1003, 1004] # cf, end of cf, pick for all target
     ee_positions, ee_rotations, pointer = get_translation_rotations_ee(events, base, to, translations, rotations, trial_pointer=True, events_required=events_required) 
@@ -323,16 +340,22 @@ for file in files:
     cues = get_cue(events)
     colors_trials, colors_targets = getColors(cues, TARGETS_ORDER + 5000)
 
-
     # get positions of targets with respect to base frame
     translation_base_kinect = np.array([0.064, 0.759, 2.021])
     rotation_base_kinect = np.array([0.016, 0.977, -0.203, -0.058])
     targets_positions = get_target_position(base, to, TARGETS_ORDER, translations, rotations, translation_base_kinect, rotation_base_kinect) # now we have kinect -> target
 
+    # plot all
+    #plot_everything(ee_positions, targets_positions, TARGETS_ORDER, colors_trials, colors_targets, pointer, name_file)
+
+    ############################## REASONING FOR METRIC
     # shows velocity, acceleration and jerk starting from position (x,y) of the end-effector
-    # vel_acc_jerk_4_trial(ee_positions[1:,0], ee_positions[1:,1], pointer) # --> close to zero
+    #vel_acc_jerk_4_trial(ee_positions[1:,0], ee_positions[1:,1], pointer) # --> close to zero
+
+    # check if metrics need to be computed also for the picking or not
+    metric_with_pick = True
+    if not metric_with_pick:
+        events_required = [781, 33549] # cf, end of cf
+        ee_positions, ee_rotations, pointer = get_translation_rotations_ee(events, base, to, translations, rotations, trial_pointer=True, events_required=events_required) 
     
     metric(ee_positions, pointer, targets_positions, TARGETS_ORDER + 5000, cues, 5)
-
-    # plot all
-    plot_everything(ee_positions, targets_positions, TARGETS_ORDER, colors_trials, colors_targets, pointer)
