@@ -276,6 +276,9 @@ def metric(ee_positions, pointer, targets_positions, targets_order, cues, step=5
     # add the final pointer
     pointer = np.append(pointer, len(ee_positions))
 
+    # variable with all error for all trials
+    mean_err_4_trial = np.array([])
+
     # iterate over trials
     for i in range(len(pointer)-1):
         # save initial position ee
@@ -308,10 +311,11 @@ def metric(ee_positions, pointer, targets_positions, targets_order, cues, step=5
 
             err = np.append(err, abs(c_angle - correct_angle))
         
-        
-        print(f"Trial: {i}, error computed for: {len(err)} segments, error mean: {np.mean(err)} rad")
-            
-
+        mean_err_4_trial = np.append(mean_err_4_trial, np.mean(err))
+        #print(f"Trial: {i}, step: {step}, error computed for: {len(err)} segments, error mean: {np.mean(err)} rad")
+    
+    return mean_err_4_trial
+     
 
 
 
@@ -346,16 +350,30 @@ for file in files:
     targets_positions = get_target_position(base, to, TARGETS_ORDER, translations, rotations, translation_base_kinect, rotation_base_kinect) # now we have kinect -> target
 
     # plot all
-    #plot_everything(ee_positions, targets_positions, TARGETS_ORDER, colors_trials, colors_targets, pointer, name_file)
+    plot_everything(ee_positions, targets_positions, TARGETS_ORDER, colors_trials, colors_targets, pointer, name_file)
 
     ############################## REASONING FOR METRIC
     # shows velocity, acceleration and jerk starting from position (x,y) of the end-effector
     #vel_acc_jerk_4_trial(ee_positions[1:,0], ee_positions[1:,1], pointer) # --> close to zero
 
     # check if metrics need to be computed also for the picking or not
-    metric_with_pick = True
+    metric_with_pick = False
     if not metric_with_pick:
         events_required = [781, 33549] # cf, end of cf
         ee_positions, ee_rotations, pointer = get_translation_rotations_ee(events, base, to, translations, rotations, trial_pointer=True, events_required=events_required) 
     
-    metric(ee_positions, pointer, targets_positions, TARGETS_ORDER + 5000, cues, 5)
+    steps_to_check = 5
+    all_mena4trial = np.empty((0,10))
+    fig = plt.figure(f"best steps for: {name_file}")
+    ax = fig.add_subplot(111)
+    for i in range(1,steps_to_check):
+        mean_4_trial = metric(ee_positions, pointer, targets_positions, TARGETS_ORDER + 5000, cues, i)
+        print(f"mean for trial: {mean_4_trial}")
+        ax.scatter(mean_4_trial, range(len(mean_4_trial)), s=10, label=f"steps: {i}")
+        ax.legend()
+        ax.set_ylabel("trial")
+        ax.set_xlabel("error")
+
+plt.show()
+
+
