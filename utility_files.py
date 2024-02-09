@@ -58,7 +58,7 @@ class NotEqualLenException(Exception):
 def compare_lens(event, base, to, translation_x, translation_y):
     if len(event) != len(base) or len(base) != len(to) or len(to) != len(translation_x) or len(translation_x) != len(translation_y):
         err_string = f"One of the vectors has a different length.\n  event size: {len(event)},\n  base size: {len(base)},\n  to size: {len(to)}, \
-        \n  translation_x size: {len(translation_x)}, \n  translation_y size: {len(translation_y)}."
+        \n  translation size: {len(translation_x)}, \n  rotation size: {len(translation_y)}."
         raise NotEqualLenException(err_string)
 
 def get_translation_rotations_ee(events, base, to, translations, rotations, trial_pointer = False, events_required=[781,33549], \
@@ -79,13 +79,18 @@ def get_translation_rotations_ee(events, base, to, translations, rotations, tria
                         trial_pos = np.append(trial_pos, 0)
                     else:
                         trial_pos = np.append(trial_pos, trials_translations.shape[0]-1)
+                        print(f"event prev: {events[i-1]}")
+                        print(f"event curr: {events[i]}")
                 trials_rotations = np.vstack((trials_rotations, rotations[i,:]))
                 trials_translations = np.vstack((trials_translations, translations[i,:]))
 
         # update the flag used to save first element of the trial
         else: 
+            if events[i] in [33549, 1000, 1001, 1002, 1003, 1004, 5000, 5001, 5002, 5003, 5004, None] and events[i-1] in events_required:
+                #print(f"event prev: {events[i-1]}")
+                #print(f"event curr: {events[i]}")
             first = True
-
+    print("\n")
     if trial_pointer:
         return [trials_translations, trials_rotations, trial_pos]
     else:

@@ -28,16 +28,17 @@ def plot_everything(points_trajectories, points_targets, tragets_order, colors_t
     plt.axis([-0.5, 0.5, -0.05, 0.95])
 
     #plt.savefig(f"plot_{name_file}.png")        #################################################################################
-    plt.show()
+    #plt.show()
 
 
 # load the mat file
-directory = "/home/paolo/Scaricati/ur_data_correct"
+directory = "/home/paolo/Scaricati"
+#directory = "/home/paolo/Scaricati/pipeline_general_informations"
 files = get_files(directory)
+files = [directory + "/ur_data.c7.g1.20231215.172719_test.mat", directory + "/ur_data.c7.g1.20231215.172719.mat"]
 print(f"files to process: {len(files)}")
 for file in files:
     ############################## LOAD FILE AND EXTRACT ALL INFORMATIONS
-    #file = directory + "/ur_data20231215.173304_new.mat"
     print(f"Processing file: {file}")
     mat_file = loadmat(file)
     name_file = file.split('/')[len(file.split('/'))-1]
@@ -48,6 +49,8 @@ for file in files:
     # get the translation and the rotation of ee during cf and pick. All is with respect to base frame
     events_required = [781, 33549, 1000, 1001, 1002, 1003, 1004] # cf, end of cf, pick for all target
     ee_positions, ee_rotations, pointer = get_translation_rotations_ee(events, base, to, translations, rotations, trial_pointer=True, events_required=events_required) 
+    print(f"pointer: {pointer}")
+    print(f"len pointer: {len(pointer)}")
 
     # get the cues and set the colors according them
     cues = get_cue(events)
@@ -66,11 +69,12 @@ for file in files:
     #vel_acc_jerk_4_trial(ee_positions[1:,0], ee_positions[1:,1], pointer) # --> close to zero
 
     # check if metrics need to be computed also for the picking or not
-    metric_with_pick = False
+    metric_with_pick = True
     if not metric_with_pick:
         events_required = [781, 33549] # cf, end of cf
         ee_positions, ee_rotations, pointer = get_translation_rotations_ee(events, base, to, translations, rotations, trial_pointer=True, events_required=events_required) 
-    
+        print(f"pointer: {pointer}")
+    '''
     steps_to_check = 5
     all_mena4trial = np.empty((0,10))
     fig = plt.figure(f"best steps for: {name_file}")
@@ -82,6 +86,7 @@ for file in files:
         ax.legend()
         ax.set_ylabel("trial")
         ax.set_xlabel("error")
+    '''
 
 plt.show()
 
