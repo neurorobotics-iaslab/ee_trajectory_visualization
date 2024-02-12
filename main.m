@@ -35,12 +35,12 @@ for i = 1:length(files)
     [trj_x, trj_y, trj_POS, trj_DUR] = get_trj(tr_x, tr_y, cf_POS, cf_DUR, pick_POS, pick_DUR);
 
     %% Plotting
-    fig = figure('Name', ['trajectory for file: ', file]);
-    draw(ID_COLORS, 0.02, 0.02, tags_pos, TAGS_ORDER, cue, trj_x, trj_y, trj_POS, trj_DUR);
+    %fig = figure('Name', ['trajectory for file: ', file]);
+    %draw(ID_COLORS, 0.02, 0.02, tags_pos, TAGS_ORDER, cue, trj_x, trj_y, trj_POS, trj_DUR);
 
     %% show jerk
-    vel_acc_jerk_4_trial(trj_x, trj_y, trj_POS, trj_DUR);
+    %vel_acc_jerk_4_trial(trj_x, trj_y, trj_POS, trj_DUR);
 
     %% compute metric
-    
+    metric(trj_x, trj_y, trj_POS, trj_DUR, tags_pos(:,1), tags_pos(:,2), TAGS_ORDER, cue, 2);
 end

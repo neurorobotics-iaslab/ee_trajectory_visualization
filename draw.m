@@ -10,6 +10,7 @@ function draw(ID_COLORS, width, height, tags_pos, TAGS_ORDER, cue, trj_x, trj_y,
     draw_trj(cue, trj_x, trj_y, trj_POS, trj_DUR, ID_COLORS);
     
     hold off;
+    drawnow;
 end
 
 % draw tags in the image

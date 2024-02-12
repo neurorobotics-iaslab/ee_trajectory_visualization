@@ -1,48 +1,57 @@
-function mean_err_4_trial = metric(ee_positions, pointer, targets_positions, targets_order, cues, step)
-    % Sort the position of targets in order to have correct labeling using targets_order
-    [~, indices] = sort(targets_positions(:, 1));
-    target_positions_sorted = targets_positions(indices, :);
-    
-    % Add the final pointer
-    pointer = [pointer, numel(ee_positions)];
+% tags mustbe already ordered from left to right. TAGS_ORDER is used to
+% understand from cue where the robot must go
 
-    % Variable with all error for all trials
-    mean_err_4_trial = [];
+function metric(ee_x, ee_y, ee_pos, ee_dur, tags_x, tags_y, TAGS_ORDER, cues, step)
+
+    % Variable for all trials
+    m_err_4_trial     = [];
+    m_abs_err_4_trial = [];
     
     % Iterate over trials
-    for i = 1:numel(pointer)-1
-        % Save initial position ee
-        ee_start_position = ee_positions(pointer(i), :);
+    for i = 1:numel(ee_pos)
 
         % Take only few points of the trajectory
-        pointer_points_used = pointer(i)+1:step:pointer(i+1)-1; % +1 since first position is used as initial pos for ee
-        
-        % Take the correct target position
-        for t = 1:numel(targets_order)
-            if targets_order(t) == cues(i)
-                i_target = t;
+        c_ee_pos = ee_pos(i):step:ee_pos(i)+ee_dur(i)-1;
+
+        % Take the correct tags position for this trial
+        for t=1:numel(TAGS_ORDER)
+            if TAGS_ORDER(t) == cues(i)
+                c_tag_x = tags_x(t);
+                c_tag_y = tags_y(t);
             end
         end
-        correct_target_position = target_positions_sorted(i_target, :);
-        % Compute the correct angle which connect first position of ee and target
-        correct_angle = calculate_angle(ee_start_position(1), ee_start_position(2), correct_target_position(1), correct_target_position(2));
-        
-        % Variable initialization
+
+        % compute the metric
         err = [];
-        % Iterate over points to use except the last point which is the target one
-        for j = 1:numel(pointer_points_used)-1
-            c_ee_x = ee_positions(pointer_points_used(j), 1);
-            c_ee_y = ee_positions(pointer_points_used(j), 2);
+        for j = 1:numel(c_ee_pos)-1
+            c_ee_x = ee_x(c_ee_pos(j));
+            c_ee_y = ee_y(c_ee_pos(j));
 
-            n_ee_x = ee_positions(pointer_points_used(j+1), 1);
-            n_ee_y = ee_positions(pointer_points_used(j+1), 2);
+            n_ee_x = ee_x(c_ee_pos(j+1));
+            n_ee_y = ee_y(c_ee_pos(j+1));
 
+            % calculate the correct angle to pick in the current point
+            correct_angle = calculate_angle(c_ee_x, c_ee_y, c_tag_x, c_tag_y);
+
+            % calculate the angle taken
             c_angle = calculate_angle(c_ee_x, c_ee_y, n_ee_x, n_ee_y);
 
-            err = [err, abs(c_angle - correct_angle)];
+            err = [err; correct_angle - c_angle];
         end
-        mean_err_4_trial = [mean_err_4_trial, mean(err)];
+
+        % Save the mean error
+        m_err_4_trial = [m_err_4_trial, mean(err)];
+        m_abs_err_4_trial = [m_abs_err_4_trial, mean(abs(err))];
     end
+    disp(['   mean 4 trial: ', num2str(round(m_err_4_trial, 4))])
+    disp(['   mean abs 4 trial: ', num2str(round(m_abs_err_4_trial, 4))])
+end
+
+function angle_rad = calculate_angle(x1, y1, x2, y2)
+    delta_x = x2 - x1;
+    delta_y = y2 - y1;
+
+    angle_rad = atan2(delta_y, delta_x);
 end
 
 
