@@ -5,7 +5,7 @@ directory = '/home/paolo/Scaricati/upsampled';
 files = get_files(directory);
 
 % variables for general plot frechet
-n_run_f = 14;
+n_run_f = 16;
 n_session_f = 5;
 run_f.mean = nan(n_run_f, length(couples));
 run_f.std = nan(n_run_f, length(couples));
@@ -35,16 +35,15 @@ for i= 1:length(couples)
     [ee_session, session_hit] = extract_ee_hit(event, session, ee, event_req);
 
     % draw trajectories
-    draw_trj(ee_run, run_hit, strjoin(couples(i)), 'run');
-    draw_trj(ee_session, session_hit, strjoin(couples(i)), 'session');
+    %draw_trj(ee_run, run_hit, strjoin(couples(i)), 'run');
+    %draw_trj(ee_session, session_hit, strjoin(couples(i)), 'session');
 
-    % definition for the plot
+    % definition for the heatmap plot
     nbins_x = 80;
     nbins_y = 80;
-
-    % plot for each session
-    draw_topographic(ee_session, session_hit, strjoin(couples(i)), nbins_x, nbins_y, 'session');
-    draw_topographic(ee_run, run_hit, strjoin(couples(i)), nbins_x, nbins_y, 'run');
+    saturation = 300;
+    draw_topographic(ee_session, session_hit, strjoin(couples(i)), nbins_x, nbins_y, 'session', saturation);
+    draw_topographic(ee_run, run_hit, strjoin(couples(i)), nbins_x, nbins_y, 'run', saturation);
 
     % frechet distance
     event.TYP = old_TYP;
@@ -55,14 +54,14 @@ for i= 1:length(couples)
     result_session = frechet(ee, session, event, tags, cues, events_pick, event_cf, step);
     
     % save frechet for such couple
-    run_f.mean(:,i) = result_run.mean(1:n_run_f);
-    run_f.std(:,i)  = result_run.std(1:n_run_f);
+    run_f.mean(1:length(result_run.mean(:)),i) = result_run.mean(:);
+    run_f.std(1:length(result_run.std(:)),i)  = result_run.std(:);
     session_f.mean(:,i) = result_session.mean(1:n_session_f);
     session_f.std(:,i)  = result_session.std(1:n_session_f);
 end
 
 %% plot frechet
-plot_frechet(run_f, 'run', couples);
-plot_frechet(session_f, 'session', couples);
+plot_frechet(run_f, 'Frechet distance for each run', couples, 'Runs');
+plot_frechet(session_f, 'Frechet distance for each session', couples, 'Sessions');
 
 
