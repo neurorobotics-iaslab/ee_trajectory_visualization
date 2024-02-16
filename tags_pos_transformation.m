@@ -1,6 +1,7 @@
-% function to have the targs position ordered from the left one to the
-% right
-function final_position = get_tags_pos(tr_x, tr_y, tr_z)
+function final_pos = tags_pos_transformation(tags)
+    tr_x = tags.tr.x;
+    tr_y = tags.tr.y;
+    tr_z = tags.tr.z;
     translation_base_kinect = [0.064; 0.759; 2.021];
     rotation_base_kinect = [0.016; 0.977; -0.203; -0.058];
     tf_base_kinect = quaternionTranslation_to_transformationMatrix(rotation_base_kinect, translation_base_kinect);
@@ -12,7 +13,7 @@ function final_position = get_tags_pos(tr_x, tr_y, tr_z)
 
         final_position = [final_position; point(1:3)'];
     end
-    
-    final_position = order_following_x(final_position);
+    final_pos.tr.x = final_position(:,1);
+    final_pos.tr.y = final_position(:,2);
+    final_pos.tr.z = final_position(:,3);
 end
-

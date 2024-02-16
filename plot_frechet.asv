@@ -1,0 +1,28 @@
+% struct contains all mean value for a run of a couple. n_run x n_couple
+function plot_frechet(struct, str, couples)
+    n_bars  = size(struct.mean, 1);
+    n_goups = size(struct.mean, 2);
+    x_tick = size(struct.mean, 2) + 1;
+    x = 1:(size(struct.mean, 1) * (size(struct.mean,2) + 1));
+    figure('Name', str);
+    hold on;
+
+    for i = 1:n_goups
+        x_b = x(i:x_tick:x(end))';
+        b = bar(x_b, struct.mean(:,i), 'BarWidth', 0.25);
+        b = gca;
+    end
+
+    %xlabel(1:size(struct.mean, 1)');
+    hold off;
+
+    %{
+    bar(struct.mean, 'grouped');
+    for i = 1:size(struct.mean, 2)
+        errorbar(struct.mean, struct.std,'.')
+    end
+    hold off;
+    title(['Frechet mean for each ', str]);
+    legend(couples)
+    %}
+end

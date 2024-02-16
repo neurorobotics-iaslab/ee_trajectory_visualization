@@ -1,7 +1,7 @@
 % tags mustbe already ordered from left to right. TAGS_ORDER is used to
 % understand from cue where the robot must go
 
-function [m_err_4_trial, m_abs_err_4_trial] = metric(ee_x, ee_y, ee_pos, ee_dur, tags_x, tags_y, TAGS_ORDER, cues, step)
+function metric(ee_x, ee_y, ee_pos, ee_dur, tags_x, tags_y, TAGS_ORDER, cues, step)
 
     % Variable for all trials
     m_err_4_trial     = [];
@@ -11,7 +11,7 @@ function [m_err_4_trial, m_abs_err_4_trial] = metric(ee_x, ee_y, ee_pos, ee_dur,
     for i = 1:numel(ee_pos)
 
         % Take only few points of the trajectory
-        c_ee_pos = ee_pos(i):step:ee_pos(i)+ee_dur(i)-1;
+        c_ee_pos = ee_pos(i):step:ee_pos(i)+ee_dur(i);
 
         % Take the correct tags position for this trial
         for t=1:numel(TAGS_ORDER)
@@ -43,8 +43,8 @@ function [m_err_4_trial, m_abs_err_4_trial] = metric(ee_x, ee_y, ee_pos, ee_dur,
         m_err_4_trial = [m_err_4_trial, mean(err)];
         m_abs_err_4_trial = [m_abs_err_4_trial, mean(abs(err))];
     end
-    disp(['   mean 4 trial: ', num2str(round(m_err_4_trial, 4))])
-    disp(['   mean abs 4 trial: ', num2str(round(m_abs_err_4_trial, 4))])
+    fprintf('   mean 4 trial: %.3f \n', m_err_4_trial);
+    fprintf('   mean abs 4 trial: %.3f \n', m_abs_err_4_trial);
 end
 
 function angle_rad = calculate_angle(x1, y1, x2, y2)

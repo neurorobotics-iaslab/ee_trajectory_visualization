@@ -1,3 +1,4 @@
+clear all; %close all;
 %% analisis of alessio's experiments
 addpath('/home/paolo/ee_trajectory_visualization');
 
@@ -17,6 +18,8 @@ ID_COLORS = containers.Map(TAGS_ORDER, COLORS);
 
 directory = '/home/paolo/Scaricati/ur_data';
 files = get_files(directory);
+
+value_metric = [];
 
 for i = 1:length(files)
     %% load and process all file
@@ -42,5 +45,24 @@ for i = 1:length(files)
     %vel_acc_jerk_4_trial(trj_x, trj_y, trj_POS, trj_DUR);
 
     %% compute metric
-    metric(trj_x, trj_y, trj_POS, trj_DUR, tags_pos(:,1), tags_pos(:,2), TAGS_ORDER, cue, 2);
+    %[m, ma] = metric(trj_x, trj_y, trj_POS, trj_DUR, tags_pos(:,1), tags_pos(:,2), TAGS_ORDER, cue, 2);
+    %value_metric = [value_metric; m; ma];
 end
+
+%% last
+%{
+m = mean(value_metric(1:2:length(value_metric), :),1);
+ma = value_metric(2:2:length(value_metric), :);
+figure;
+hold on;
+for i = 1:length(m)
+    plot( 1:1:length(m(i,:)), m(i,:));
+end
+hold off;
+figure;
+hold on;
+for i = 1:length(ma)
+    plot( 1:1:length(ma(i,:)), ma(i,:));
+end
+hold off;
+%}

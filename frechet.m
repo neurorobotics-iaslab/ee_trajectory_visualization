@@ -1,0 +1,57 @@
+function result = frechet(ee, struct, event, tags, cue, events_pick, event_cf, step)
+    result.mean = zeros(length(struct.POS), 1);
+    result.std = zeros(length(struct.POS), 1);
+    tags_matrix = tags_as_matrix(tags);
+    j = 1;
+    c_frecht = [];
+    % iterate over all event
+    for i= 1:length(event.TYP)
+        if event.POS(i) > struct.POS(j) + struct.DUR(j)
+            % upgrade frechet vector final
+            result.mean(j) = mean(c_frecht);
+            result.std(j) = std(c_frecht);
+            j = j +1;
+            c_frecht = [];
+        else
+            % check the event is a cue
+            if ismember(event.TYP(i), cue)
+                idx_tag = event.TYP(i) - 5000 + 1;
+                c_tag = tags_matrix(1:2,idx_tag); % x,y
+                start_pos = [ee.tr.x(event.POS(i)); ee.tr.y(event.POS(i))]; % x,y
+                trj.x = [];
+                trj.y = [];
+            elseif ismember(event.TYP(i), event_cf)
+                % in the trial cf
+                trj.x = [trj.x; [ee.tr.x(event.POS(i):event.POS(i) + event.DUR(i)-1)]];
+                trj.y = [trj.y; [ee.tr.y(event.POS(i):event.POS(i) + event.DUR(i)-1)]];
+            elseif ismember(event.TYP(i), events_pick)
+                % in the trial pick finish it, compute frechet
+                trj.x = [trj.x; [ee.tr.x(event.POS(i):event.POS(i) + event.DUR(i)-1)]];
+                trj.y = [trj.y; [ee.tr.y(event.POS(i):event.POS(i) + event.DUR(i)-1)]];
+
+                % ideal trajectory
+                i_trj.x = linspace(start_pos(1), c_tag(1), length(trj.x))';
+                i_trj.y = linspace(start_pos(2), c_tag(2), length(trj.y))';
+
+                % frechet
+                % use small trajectories in order to compute frechet faster
+                l = length(trj.x);
+                [cm, ~] = DiscreteFrechetDist([trj.x(1:step:l), trj.y(1:step:l)], [i_trj.x(1:step:l), i_trj.y(1:step:l)]);
+                c_frecht = [c_frecht; cm];
+            end
+        end
+    end
+    result.mean(j) = mean(c_frecht);
+    result.std(j) = std(c_frecht);
+
+end
+
+function tags_matrix = tags_as_matrix(tags)
+    tags_matrix = nan(length(tags.tr.x), 3);
+
+    tags_matrix(:,1) = tags.tr.x;
+    tags_matrix(:,2) = tags.tr.y;
+    tags_matrix(:,3) = tags.tr.z;
+
+    tags_matrix = tags_matrix';
+end
