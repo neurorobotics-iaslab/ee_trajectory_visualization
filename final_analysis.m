@@ -14,6 +14,7 @@ session_f.std = nan(n_session_f, length(couples));
 
 for i= 1:length(couples) 
     % Take only files with such couple
+    fprintf('Couple: %s\n', strjoin(couples(i)));
     couple_files = file_with_substr(files, strjoin(couples(i)));
 
     % Load all file of such couple and concatenate them. Tags are ordered
@@ -25,16 +26,20 @@ for i= 1:length(couples)
     % extract translation ee only of the hit trials
     cues = [5000, 5001, 5002, 5003, 5004];
     old_TYP = event.TYP;
+    fprintf('   extracting hit\n');
     event.TYP = vector_hit(event, cues, 5000, 1000); % hit is a vector same length of event.TYP
 
     % extract for each run only hit trials
     event_req = [781, 1000, 1001, 1002, 1003, 1004]';
+    fprintf('      for each run\n');
     [ee_run, run_hit] = extract_ee_hit(event, run, ee, event_req); % only hit ee.tr with pointer for each start/end run to the ee.tr vector
 
     % extract for each session only hit trials
+    fprintf('      for each session\n');
     [ee_session, session_hit] = extract_ee_hit(event, session, ee, event_req);
 
     % draw trajectories
+    %fprintf('   drawing trajectories')
     %draw_trj(ee_run, run_hit, strjoin(couples(i)), 'run');
     %draw_trj(ee_session, session_hit, strjoin(couples(i)), 'session');
 
@@ -42,7 +47,9 @@ for i= 1:length(couples)
     nbins_x = 80;
     nbins_y = 80;
     saturation = 300;
+    fprintf('   drawing heatmap for runs\n')
     draw_topographic(ee_session, session_hit, strjoin(couples(i)), nbins_x, nbins_y, 'session', saturation);
+    fprintf('   drawing heatmap for sessions\n')
     draw_topographic(ee_run, run_hit, strjoin(couples(i)), nbins_x, nbins_y, 'run', saturation);
 
     % frechet distance
@@ -50,7 +57,9 @@ for i= 1:length(couples)
     events_pick = [1000, 1001, 1002, 1003, 1004];
     event_cf = [781];
     step = 32;
+    fprintf('   computing frechet for each run\n')
     result_run = frechet(ee, run, event, tags, cues, events_pick, event_cf, step);
+    fprintf('   computing frechet for each session\n')
     result_session = frechet(ee, session, event, tags, cues, events_pick, event_cf, step);
     
     % save frechet for such couple
@@ -61,6 +70,7 @@ for i= 1:length(couples)
 end
 
 %% plot frechet
+fprintf('   plotting frechet\n')
 plot_frechet(run_f, 'Frechet distance for each run', couples, 'Runs');
 plot_frechet(session_f, 'Frechet distance for each session', couples, 'Sessions');
 

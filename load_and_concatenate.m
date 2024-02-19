@@ -1,3 +1,5 @@
+% load all file from a list and concatene them. Is important the the files
+% are .mat with a specific structure (reported in the README.md)
 function [c_event, ee, tags, run, session] = load_and_concatenate(files, n_tags)
     % build up a new structure with all the data
     c_event.TYP = [];
@@ -36,6 +38,7 @@ function [c_event, ee, tags, run, session] = load_and_concatenate(files, n_tags)
     for idx_f = 1:length(files)
         % load file
         c_file = strjoin(files(idx_f));
+        fprintf('   loading: %s\n', c_file);
         load(c_file);
 
         % save the session

@@ -1,3 +1,5 @@
+% transform the tags position form kinect frame to mount. This function
+% depends on the calibration, therefore works only for our system
 function final_pos = tags_pos_transformation(tags)
     tr_x = tags.tr.x;
     tr_y = tags.tr.y;

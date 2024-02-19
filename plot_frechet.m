@@ -1,3 +1,4 @@
+% plot frechet distance based on struct. In addition plot it as bars
 % struct contains all mean value for a run of a couple. n_run x n_couple
 function plot_frechet(struct, str_title, couples, label_x)
     n_bars  = size(struct.mean, 1);

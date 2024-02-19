@@ -1,4 +1,5 @@
-% return a vector with ones and zeros accordin to hit or miss
+% return a vector with ones and zeros accordin to hit or miss for each
+% trial
 function v = vector_hit(event, cues, offset_cue, offset_tag)
     v = [];
     i = 1;
